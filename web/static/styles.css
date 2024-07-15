@@ -1,0 +1,30 @@
+/* web/static/styles.css */
+body {
+    font-family: Arial, sans-serif;
+}
+
+#chat-container {
+    width: 60%;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+}
+
+#chat-box {
+    height: 300px;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+#user-input {
+    width: calc(100% - 80px);
+    padding: 10px;
+}
+
+button {
+    padding: 10px;
+}
