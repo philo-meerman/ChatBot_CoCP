@@ -10,21 +10,68 @@ body {
     border: 1px solid #ccc;
     border-radius: 10px;
     background-color: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+    height: 80vh; 
 }
 
 #chat-box {
-    height: 300px;
+    flex: 1;
     overflow-y: scroll;
     border: 1px solid #ccc;
     padding: 10px;
     margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+#input-container {
+    display: flex;
+    margin-top: 10px;
 }
 
 #user-input {
-    width: calc(100% - 80px);
+    flex: 1;
     padding: 10px;
 }
 
 button {
     padding: 10px;
+}
+
+.message {
+    display: inline-block;
+    margin-bottom: 10px;
+    max-width: 70%; 
+    word-wrap: break-word;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.user-message {
+    background-color: #f1f1f1;
+    margin-left: auto;
+    text-align: right;
+}
+
+.bot-message {
+    background-color: #e2e2e2;
+    margin-right: auto;
+    text-align: left;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 5px solid lightgray;
+    border-top: 5px solid #333;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: block; 
+    margin: 10px auto; 
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

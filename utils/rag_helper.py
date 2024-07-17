@@ -1,32 +1,43 @@
 # utils/rag_helper.py
-import warnings
-from transformers import pipeline
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import RobertaTokenizer, RobertaForCausalLM
 
-# Initialize the pipeline once at the module level
-pipe = pipeline("fill-mask", model="pdelobelle/robbert-v2-dutch-base")
+# tokenizer = RobertaTokenizer.from_pretrained("pdelobelle/robbert-v2-dutch-base")
+# model = RobertaForCausalLM.from_pretrained("pdelobelle/robbert-v2-dutch-base")
+
+# Initialize the tokenizer and model
+tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
+# tokenizer = AutoTokenizer.from_pretrained("pdelobelle/robbert-v2-dutch-base")
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
+model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
+# model = AutoModelForCausalLM.from_pretrained("pdelobelle/robbert-v2-dutch-base")
+
+# Check if a GPU is available and set the device accordingly
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
 
 def generate_answer(query, context):
-    # Ensure the query includes the mask token
-    if "<mask>" not in query:
-        query += "<mask>"
+    # Encode the user input and context
+    inputs = tokenizer.encode_plus(
+        query + tokenizer.eos_token, return_tensors="pt", padding=True, truncation=True
+    )
+    input_ids = inputs["input_ids"].to(device)
+    attention_mask = inputs["attention_mask"].to(device)
 
-    # Debug: Print the query being sent to the pipeline
-    print(f"Query to pipeline: {query}")  
+    # Generate a response
+    response_ids = model.generate(
+        input_ids,
+        attention_mask=attention_mask,
+        max_length=1000,
+        pad_token_id=tokenizer.eos_token_id,
+    )
 
-    # Use the pipeline to generate a response
-    result = pipe(query)
+    # Decode the response
+    response = tokenizer.decode(
+        response_ids[:, input_ids.shape[-1] :][0], skip_special_tokens=True
+    )
 
-    # Debug: Print the result from the pipeline
-    print(f"Pipeline result: {result}")
-
-    # Custom logic to select the most appropriate answer
-    for item in result:
-        token_str = item["token_str"].strip()
-        # Filter out punctuation and select appropriate token
-        if token_str.isalpha():
-            return item["sequence"]
-    
-
-    
-    return result[0]["sequence"]  # Adjust based on the pipeline output
+    return response

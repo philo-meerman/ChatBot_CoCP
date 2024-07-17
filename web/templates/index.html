@@ -3,15 +3,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Chatbot Interface</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <title>Chatbot - Dutch Penal Code</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico">  <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div id="chat-container">
-        <h1>Chatbot</h1>
+        <h1>Dutch Penal Code - Chat bot</h1>
         <div id="chat-box"></div>
-        <input type="text" id="user-input" placeholder="Type your message here...">
-        <button onclick="sendMessage()">Send</button>
+        <div id="input-container">
+            <input type="text" id="user-input" placeholder="Type your message here...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+        <div id="loader" class="spinner" style="display: none;"></div> <!-- Loader element -->
     </div>
     <script src="/static/scripts.js"></script>
 </body>
