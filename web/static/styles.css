@@ -23,6 +23,7 @@ body {
     margin-bottom: 10px;
     display: flex;
     flex-direction: column;
+    background-color: white;
 }
 
 #input-container {
@@ -55,7 +56,7 @@ button {
 }
 
 .bot-message {
-    background-color: #e2e2e2;
+    background-color: #cce7ff;
     margin-right: auto;
     text-align: left;
 }

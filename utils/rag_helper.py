@@ -1,18 +1,12 @@
 # utils/rag_helper.py
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from transformers import RobertaTokenizer, RobertaForCausalLM
-
-# tokenizer = RobertaTokenizer.from_pretrained("pdelobelle/robbert-v2-dutch-base")
-# model = RobertaForCausalLM.from_pretrained("pdelobelle/robbert-v2-dutch-base")
 
 # Initialize the tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
-# tokenizer = AutoTokenizer.from_pretrained("pdelobelle/robbert-v2-dutch-base")
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
 model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
-# model = AutoModelForCausalLM.from_pretrained("pdelobelle/robbert-v2-dutch-base")
 
 # Check if a GPU is available and set the device accordingly
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
