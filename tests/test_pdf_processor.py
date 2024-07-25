@@ -5,7 +5,7 @@ from utils.pdf_processor import extract_text_from_pdf
 
 class TestPDFProcessor(unittest.TestCase):
     def test_extract_text_from_pdf(self):
-        text = extract_text_from_pdf("data/tk-memorie-van-toelichting-nieuw-wetboek-van-sv.pdf")
+        text = extract_text_from_pdf("data/vm1kkye15yy2.pdf")
         self.assertIsInstance(text, str)
         self.assertGreater(len(text), 0)
 

@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from flask import Flask, render_template, request, jsonify
-from utils.pdf_processor import extract_text_from_pdf
+from utils.pdf_processor import extract_boek_2_text
 from utils.rag_helper import generate_answer
 
 app = Flask(__name__)
@@ -19,9 +19,7 @@ def index():
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message")
-    context = extract_text_from_pdf(
-        "data/tk-memorie-van-toelichting-nieuw-wetboek-van-sv.pdf"
-    )
+    context = extract_boek_2_text("data/vm1kkye15yy2.pdf")
     response = generate_answer(user_input, context)
     return jsonify({"response": response})
 

@@ -124,5 +124,14 @@ dmypy.json
 cython_debug/
 
 # macOS
-/.DS_Store
-web/.DS_Store
+package.json
+package-lock.json
+.DS_Store
+/testbestanden
+embeddings.index
+/data/embeddings
+/data/*.txt
+testcase.ipynb
+test-1.ipynb
+launch.json
+run.py
