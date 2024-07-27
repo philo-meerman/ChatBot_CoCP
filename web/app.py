@@ -1,47 +1,51 @@
 import sys
 import os
-from flask import Flask, render_template, request, jsonify
-from dotenv import load_dotenv
+import logging
+from flask import Flask, render_template, request, jsonify, session
+from flask_session import Session
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from utils.pdf_processor import extract_boek_2_text
-from utils.rag_helper import generate_answer
+from init.init_rag_model import initialize_rag_model
+from utils.answer_generator import generate_answer
 from models.rag_model import RAGModel
-load_dotenv()
 
 app = Flask(__name__)
 
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    raise ValueError("OPENAI_API_KEY not found in environment variables")
+# Configuration for Flask-Session
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "supersecretkey")
+Session(app)
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Global variable for the RAG model
 rag_model = None
-
-def initialize_rag_model():
-    global rag_model
-
-    pdf_path="data/vm1kkye15yy2.pdf"
-    text = extract_boek_2_text(pdf_path=pdf_path)
-    regenerate_embeddings = 0
-
-    rag_model = RAGModel(api_key=api_key)
-    rag_model.chunk_text(text)
-    if regenerate_embeddings == 1:
-        rag_model.generate_embeddings()
-        rag_model.store_embeddings()
-    rag_model.load_embeddings()
 
 @app.route("/")
 def index():
+    session.clear()
+    logger.info("Session cleared and new session started")
     return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
 def chat():
     user_input = request.json.get("message")
-    response = generate_answer(query=user_input, rag_model=rag_model, api_key=api_key)
-    return jsonify({"response": response})
+    logger.info("Received user input: %s", user_input)
+
+    conversation_history = session.get("conversation_history", [])
+    response, updated_conversation_history = generate_answer(
+        user_input, rag_model, conversation_history
+    )
+
+    logger.info("Generated response: %s", response[:200])
+    session["conversation_history"] = updated_conversation_history
+
+    return jsonify({"response": response, "conversation_history": updated_conversation_history})
 
 if __name__ == "__main__":
-    initialize_rag_model()
+    # Initialize the RAG model
+    rag_model = initialize_rag_model()
     app.run(debug=True)

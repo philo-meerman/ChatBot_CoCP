@@ -1,4 +1,3 @@
-# utils/pdf_processor.py
 import re
 from PyPDF2 import PdfReader
 

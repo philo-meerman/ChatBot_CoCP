@@ -38,7 +38,7 @@ function sendMessage() {
         // Append the bot's response to the chat box
         const botResponse = document.createElement('div');
         botResponse.className = 'message bot-message';
-        botResponse.textContent = data.response;
+        botResponse.innerHTML = data.response.replace(/\n/g, '<br>');
         chatBox.appendChild(botResponse);
 
         // Scroll to the bottom of the chat box

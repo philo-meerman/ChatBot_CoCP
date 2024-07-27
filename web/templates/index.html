@@ -1,6 +1,5 @@
-<!-- web/templates/index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
     <title>Chatbot - Dutch Penal Code</title>
@@ -12,11 +11,16 @@
         <h1>Dutch Penal Code - Chat bot</h1>
         <div id="chat-box"></div>
         <div id="input-container">
-            <input type="text" id="user-input" placeholder="Type your message here...">
+            <input type="text" id="user-input" placeholder="Stel je vraag hier...">
             <button onclick="sendMessage()">Send</button>
         </div>
         <div id="loader" class="spinner" style="display: none;"></div> <!-- Loader element -->
     </div>
     <script src="/static/scripts.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('user-input').focus();
+        });
+    </script>
 </body>
 </html>

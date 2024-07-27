@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from utils.rag_helper import generate_answer
+from utils.answer_generator import generate_answer
 from models.rag_model import RAGModel
 from dotenv import load_dotenv
 import os
