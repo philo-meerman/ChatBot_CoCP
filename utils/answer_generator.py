@@ -4,6 +4,7 @@ from llama_index.llms.openai import OpenAI
 from utils.summarizer import summarize_history
 from utils.api import set_openai_api_key
 from config import Config
+from utils.citation_handler import is_direct_citation_request, get_direct_citation
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -22,48 +23,48 @@ def generate_answer(query, rag_model, conversation_history=None):
     - answer (str): The generated answer from the LLM.
     - serializable_history (list): The updated conversation history in a serializable format.
     """
-    # Set the OpenAI API key
     set_openai_api_key()
 
-    # Log the received query
     logger.info("Received query:\n%s", query)
 
-    # Initialize conversation history if it's not provided
     if conversation_history is None:
         conversation_history = []
 
-    # Ensure conversation history is in the correct format
     conversation_history = [ChatMessage(**msg) if isinstance(msg, dict) else msg for msg in conversation_history]
 
-    # Add the current query to the conversation history
     conversation_history.append(ChatMessage(role="user", content=query))
 
-    # Summarize the conversation history
-    summary = summarize_history(history=conversation_history)
-    logger.info("Summarized conversation history for RAG model query:\n%s", summary)
+    # Check if the query requests a direct citation
+    if is_direct_citation_request(query):
+        logger.info("Query requests specific section text")
+        # Directly retrieve the citation from the RAG model
+        answer = get_direct_citation(query, rag_model, conversation_history)
+    else:
+        # Summarize the conversation history
+        summary = summarize_history(conversation_history)
+        logger.info("Summarized conversation history for RAG model query:\n%s", summary)
 
-    # Retrieve relevant chunks from the RAG model
-    relevant_chunks = rag_model.get_relevant_chunks(summary, k=5)
-    context = "\n\n".join(relevant_chunks)
-    logger.info("Retrieved %d relevant chunks", len(relevant_chunks))
-    for i, chunk in enumerate(relevant_chunks):
-        logger.info("\nChunk %d:\n%s", i + 1, chunk[:200])  # Log the first 200 characters of each chunk
+        # Retrieve relevant chunks from the RAG model using the summary
+        relevant_chunks = rag_model.get_relevant_chunks(summary, k=5)
+        context = "\n\n".join(relevant_chunks)
 
-    # Prepare the messages for the LLM
-    messages = [
-        ChatMessage(role="system", content=Config.SYSTEM_ROLE),
-        ChatMessage(role="system", content=f"Relevante context:\n{context}")
-    ] + conversation_history
-    logger.info("Prepared messages for LLM:")
-    for msg in messages:
-        logger.info("%s: %s", msg.role, msg.content[:200])  # Log the first 200 characters of each message
+        # Prepare the messages for the LLM
+        messages = [
+            ChatMessage(role="system", content=Config.SYSTEM_ROLE),
+            ChatMessage(role="system", content=f"Relevante context:\n{context}")
+        ] + conversation_history
 
-    # Initialize the OpenAI chat model
-    llm = OpenAI(temperature=0, model=Config.CHAT_MODEL, max_tokens=Config.MAX_TOKENS)
+        logger.info("Prepared messages for LLM:")
+        for msg in messages:
+            logger.info("%s: %s", msg.role, msg.content[:200])
 
-    # Get the response from the chat model
-    responses = llm.chat(messages)
-    answer = responses.message.content
+        # Initialize the OpenAI chat model
+        llm = OpenAI(temperature=0, model=Config.CHAT_MODEL, max_tokens=Config.MAX_TOKENS)
+
+        # Get the response from the chat model
+        responses = llm.chat(messages)
+        answer = responses.message.content
+
     logger.info("Generated answer:\n%s", answer)
 
     # Add the assistant's response to the conversation history

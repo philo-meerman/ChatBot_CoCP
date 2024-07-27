@@ -32,6 +32,7 @@ class RAGModel:
         self.index_path = index_path
         self.chunks = []
         self.embeddings = []
+        self.article_mapping = {}
 
     def parse_penal_code(self, text):
         """
@@ -70,10 +71,14 @@ class RAGModel:
                     current_title['afdelingen'].append(current_afdeling)
                 current_article = {'article': line, 'content': ''}
                 current_afdeling['articles'].append(current_article)
+                article_number = line.split()[1]
+                article_content_lines = []
                 i += 1
                 while i < len(lines) and not article_pattern.match(lines[i]) and not afdeling_pattern.match(lines[i]) and not title_pattern.match(lines[i]):
-                    current_article['content'] += lines[i].strip() + ' '
+                    article_content_lines.append(lines[i].strip())
                     i += 1
+                current_article['content'] = "\n".join(article_content_lines)  # Preserve line breaks
+                self.article_mapping[article_number] = current_article  # Map article number to content
                 continue
             i += 1
 
@@ -207,3 +212,19 @@ class RAGModel:
             self.chunks[idx] for idx in indices if idx < len(self.chunks)
         ]
         return relevant_chunks
+
+    def get_exact_article(self, article_number):
+        """
+        Retrieve the exact article content based on the article number.
+
+        Parameters:
+        - article_number (str): The article number to retrieve.
+
+        Returns:
+        - str: The content of the specified article or an error message if not found.
+        """
+        article = self.article_mapping.get(article_number)
+        if article:
+            return article['content']
+        else:
+            return "Sorry, het gevraagde artikel kon niet worden gevonden."

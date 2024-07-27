@@ -40,7 +40,7 @@ def chat():
         user_input, rag_model, conversation_history
     )
 
-    logger.info("Generated response: %s", response[:200])
+    logger.info("Generated response: %s", str(response)[:200])
     session["conversation_history"] = updated_conversation_history
 
     return jsonify({"response": response, "conversation_history": updated_conversation_history})
