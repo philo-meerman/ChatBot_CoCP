@@ -1,26 +1,17 @@
 # models/rag_model.py
-import openai
 from langchain_openai import OpenAIEmbeddings
 import faiss
 import numpy as np
-from dotenv import load_dotenv
-import os
 import re
 
-
-load_dotenv()
-
-api_key = os.getenv("OPENAI_AI_KEY")
-
 class RAGModel:
-    def __init__(self, chunk_size=1024, chunk_overlap = 50, index_path="embeddings.index"):
+    def __init__(self, api_key, chunk_size=1024, chunk_overlap = 50, index_path="embeddings.index"):
         self.api_key = api_key
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.index_path = index_path
         self.chunks = []
         self.embeddings = []
-        openai.api_key = self.api_key
 
     def parse_penal_code(self, text):
         # Define regex patterns for titles, afdelingen, and articles
@@ -126,7 +117,6 @@ class RAGModel:
         response = embedding_model.embed_query(query)
         query_embedding = np.array([response], dtype=np.float32)
         distances, indices = self.index.search(query_embedding, k)
-        print(indices[0])
         return indices[0]
 
     def get_relevant_chunks(self, query, k=5):
