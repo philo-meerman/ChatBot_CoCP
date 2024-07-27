@@ -1,23 +1,34 @@
-# tests/test_app.py
 import unittest
-from web.app import app
+import json
+from flask import Flask
+from web.app import app, initialize_rag_model
 
+class FlaskAppTests(unittest.TestCase):
 
-class TestApp(unittest.TestCase):
-    def setUp(self):
-        self.app = app.test_client()
-        self.app.testing = True
+    @classmethod
+    def setUpClass(cls):
+        # Initialize the RAG model once for all tests
+        initialize_rag_model()
+        cls.client = app.test_client()
+        cls.client.testing = True
 
     def test_index(self):
-        result = self.app.get("/")
-        self.assertEqual(result.status_code, 200)
-        self.assertIn(b"Chatbot", result.data)
+        """Test the index page."""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<!DOCTYPE html>', response.data)  # Check if HTML content is returned
 
     def test_chat(self):
-        result = self.app.post("/chat", json={"message": "Hello"})
-        self.assertEqual(result.status_code, 200)
-        self.assertIn("response", result.json)
-
+        """Test the chat endpoint."""
+        test_message = "What are the conditions for systematic observation under Dutch law?"
+        response = self.client.post("/chat", 
+                                    data=json.dumps({"message": test_message}),
+                                    content_type='application/json')
+        self.assertEqual(response.status_code, 200)
+        response_json = response.get_json()
+        self.assertIn("response", response_json)
+        self.assertIsInstance(response_json["response"], str)
+        self.assertGreater(len(response_json["response"]), 0)
 
 if __name__ == "__main__":
     unittest.main()
