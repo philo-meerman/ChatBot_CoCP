@@ -16,6 +16,7 @@ body {
     flex-direction: column;
     height: 100vh; /* Use full viewport height */
     box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    overflow: hidden;
 }
 
 #chat-box {
@@ -33,6 +34,7 @@ body {
 #input-container {
     display: flex;
     margin-top: 5px;
+    box-sizing: border-box;
 }
 
 #user-input {

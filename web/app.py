@@ -51,4 +51,4 @@ def chat():
 if __name__ == "__main__":
     # Initialize the RAG model
     rag_model = initialize_rag_model()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5001, debug=True)  
