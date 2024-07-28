@@ -6,3 +6,4 @@ faiss-cpu
 llama_index
 python-dotenv
 Flask-Session
+scikit-learn
