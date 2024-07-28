@@ -35,3 +35,6 @@ class Config:
         waarmee je de gebruiker van waardevolle informatie kunt voorzien. 
         Antwoord in het Nederlands.
         """
+    
+    # Flag to indicate whether the mobile version or browser version should be served
+    MOBILE = 1 

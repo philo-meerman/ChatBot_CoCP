@@ -1,0 +1,96 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0; /* Ensure no margin is added to the body */
+    padding: 0; /* Ensure no padding is added to the body */
+    box-sizing: border-box; /* Ensure the box-sizing is border-box for all elements */
+}
+
+#chat-container {
+    width: 100%; /* Ensure full width for mobile screens */
+    margin: 0 auto;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Use full viewport height */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+#chat-box {
+    flex: 1;
+    overflow-y: auto; /* Ensure chat box is scrollable */
+    border: 1px solid #ccc;
+    padding: 5px;
+    margin-bottom: 5px;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+#input-container {
+    display: flex;
+    margin-top: 5px;
+}
+
+#user-input {
+    flex: 1;
+    padding: 10px;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+button {
+    padding: 10px;
+    margin-left: 5px; /* Add margin to the left of the button */
+    background-color: #cce7ff; /* Set background color */
+    border: none; /* Remove border */
+    border-radius: 5px; /* Optional: add border-radius for a rounded look */
+    cursor: pointer; /* Change cursor to pointer */
+}
+
+button:hover {
+    background-color: #b0d4f1; /* Optional: add hover effect */
+}
+
+.message {
+    display: inline-block;
+    margin-bottom: 10px;
+    max-width: 80%; 
+    word-wrap: break-word;
+    padding: 10px;
+    border-radius: 10px;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+.user-message {
+    background-color: #cce7ff; /* Swapped color */
+    margin-left: auto;
+    text-align: right;
+}
+
+.bot-message {
+    background-color: #f1f1f1; /* Swapped color */
+    margin-right: auto;
+    text-align: left;
+    position: relative; /* To allow positioning the spinner inside */
+}
+
+/* Spinner styling */
+.spinner {
+    width: 20px; /* Reduced size to fit within the message bubble */
+    height: 20px;
+    border: 4px solid lightgray;
+    border-top: 4px solid #333;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block; /* Inline-block to be inside the bot message */
+    vertical-align: middle; /* Center align within the text line */
+    margin-left: 10px; /* Space between text and spinner */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

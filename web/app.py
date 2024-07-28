@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from init.init_rag_model import initialize_rag_model
 from utils.answer_generator import generate_answer
-from models.rag_model import RAGModel
+from config import Config
 
 app = Flask(__name__)
 
@@ -28,7 +28,10 @@ rag_model = None
 def index():
     session.clear()
     logger.info("Session cleared and new session started")
-    return render_template("index.html")
+    if Config.MOBILE:
+        return render_template("index_mobile.html")
+    else:
+        return render_template("index.html")
 
 @app.route("/chat", methods=["POST"])
 def chat():

@@ -30,7 +30,7 @@ def extract_article_numbers(text):
     """
     return re.findall(r'Artikel\s+(\d+\.\d+\.\d+)', text, re.IGNORECASE)
 
-def get_direct_citation(query, rag_model, conversation_history, k=5):
+def get_direct_citation(query, rag_model, conversation_history, k=1):
     """
     Retrieve the exact citation from the RAG model.
 
@@ -64,6 +64,6 @@ def get_direct_citation(query, rag_model, conversation_history, k=5):
     relevant_chunks = rag_model.get_relevant_chunks(query, k)
     if relevant_chunks:
         context = "\n\n".join(relevant_chunks)
-        return f"Hier is de gevraagde citaat:\n\n{context}"
+        return f"Hier is het gevraagde citaat:\n\n{context}"
     else:
         return "Sorry, ik kon het gevraagde citaat niet vinden in het document."

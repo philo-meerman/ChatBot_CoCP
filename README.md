@@ -1,6 +1,6 @@
 # Chatbot Project
 
-This project implements a chatbot using a Huggingface LLM and a RAG model for handling PDF files, with a browser-based user interface.
+This project implements a chatbot using OpenAI's GPT3.5Turbo LLM and a RAG model for handling PDF files, with a browser-based user interface.
 
 ## Setup
 
@@ -15,7 +15,7 @@ Access the chatbot interface at `http://127.0.0.1:5000/` in your browser.
 
 ## Explanation
 data/: Directory containing the PDF files.
-models/: Directory for model-related scripts.
+models/: Directory for RAG model-related scripts.
 utils/: Utility scripts for PDF processing and RAG model interaction.
 web/: Flask application files, including templates and static files.
 tests/: Unit tests for the application.
