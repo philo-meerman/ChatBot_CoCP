@@ -2,13 +2,13 @@ import sys
 import os
 import logging
 from flask import Flask, render_template, request, jsonify, session
+from user_agents import parse
 from flask_session import Session
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from init.init_rag_model import initialize_rag_model
 from utils.answer_generator import generate_answer
-from config import Config
 
 app = Flask(__name__)
 
@@ -28,7 +28,15 @@ rag_model = None
 def index():
     session.clear()
     logger.info("Session cleared and new session started")
-    if Config.MOBILE:
+
+    # Detect device type
+    user_agent = request.headers.get("User-Agent")
+    ua = parse(user_agent)
+
+    logger.info(f"User-Agent: {user_agent}")
+    logger.info(f"Is Mobile: {ua.is_mobile}")
+
+    if ua.is_mobile:
         return render_template("index_mobile.html")
     else:
         return render_template("index.html")
@@ -46,7 +54,9 @@ def chat():
     logger.info("Generated response: %s", str(response)[:200])
     session["conversation_history"] = updated_conversation_history
 
-    return jsonify({"response": response, "conversation_history": updated_conversation_history})
+    return jsonify({"response": response, 
+                    "conversation_history": updated_conversation_history
+                    })
 
 if __name__ == "__main__":
     # Initialize the RAG model

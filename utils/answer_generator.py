@@ -30,7 +30,10 @@ def generate_answer(query, rag_model, conversation_history=None):
     if conversation_history is None:
         conversation_history = []
 
-    conversation_history = [ChatMessage(**msg) if isinstance(msg, dict) else msg for msg in conversation_history]
+    conversation_history = [ChatMessage(**msg) 
+                            if isinstance(msg, dict) else msg 
+                            for msg in conversation_history
+                            ]
 
     conversation_history.append(ChatMessage(role="user", content=query))
 
@@ -45,25 +48,33 @@ def generate_answer(query, rag_model, conversation_history=None):
         logger.info("Summarized conversation history for RAG model query:\n%s", summary)
 
         # Retrieve relevant chunks from the RAG model using the summary
-        relevant_chunks = rag_model.get_relevant_chunks(summary, k=5)
-        context = "\n\n".join(relevant_chunks)
+        relevant_chunks = rag_model.get_relevant_chunks(summary, k=Config.TOP_K)
+        if not relevant_chunks:
+            # If no relevant chunks are found, return a message indicating that the answer cannot be found
+            answer = "Het antwoord op deze vraag kan niet worden gevonden in de gegeven context."
+        
+        else:
+            context = "\n\n".join(relevant_chunks)
 
-        # Prepare the messages for the LLM
-        messages = [
-            ChatMessage(role="system", content=Config.SYSTEM_ROLE),
-            ChatMessage(role="system", content=f"Relevante context:\n{context}")
-        ] + conversation_history
+            # Prepare the messages for the LLM
+            messages = [
+                ChatMessage(role="system", content=Config.SYSTEM_ROLE),
+                ChatMessage(role="system", content=f"Relevante context:\n{context}")
+            ] + conversation_history
 
-        logger.info("Prepared messages for LLM:")
-        for msg in messages:
-            logger.info("%s: %s", msg.role, msg.content[:200])
+            logger.info("Prepared messages for LLM:")
+            for msg in messages:
+                logger.info("%s: %s", msg.role, msg.content[:200])
 
-        # Initialize the OpenAI chat model
-        llm = OpenAI(temperature=0, model=Config.CHAT_MODEL, max_tokens=Config.MAX_TOKENS)
+            # Initialize the OpenAI chat model
+            llm = OpenAI(temperature=0, 
+                         model=Config.CHAT_MODEL, 
+                         max_tokens=Config.MAX_TOKENS
+                         )
 
-        # Get the response from the chat model
-        responses = llm.chat(messages)
-        answer = responses.message.content
+            # Get the response from the chat model
+            responses = llm.chat(messages)
+            answer = responses.message.content
 
     logger.info("Generated answer:\n%s", answer)
 
@@ -71,6 +82,8 @@ def generate_answer(query, rag_model, conversation_history=None):
     conversation_history.append(ChatMessage(role="assistant", content=answer))
 
     # Convert the conversation history to a serializable format
-    serializable_history = [{"role": msg.role, "content": msg.content} for msg in conversation_history]
+    serializable_history = [{"role": msg.role, "content": msg.content} 
+                            for msg in conversation_history
+                            ]
 
     return answer, serializable_history

@@ -16,8 +16,12 @@ class RAGModel:
     - chunks (list): List of text chunks.
     - embeddings (list): List of embeddings for the text chunks.
     """
-    
-    def __init__(self, chunk_size=1024, chunk_overlap=50, index_path="embeddings.index"):
+
+    def __init__(self, 
+                 chunk_size=Config.CHUNK_SIZE, 
+                 chunk_overlap=Config.CHUNK_OVERLAP, 
+                 index_path="embeddings.index"
+                 ):
         """
         Initialize the RAG model with the given parameters.
         
@@ -48,7 +52,8 @@ class RAGModel:
         title_pattern = re.compile(r'^TITEL\s+\d+.*$', re.MULTILINE)
         afdeling_pattern = re.compile(r'^AFDELING\s+\d+.*$', re.MULTILINE)
         article_pattern = re.compile(r'^Artikel\s+\d+\.\d+\.\d+', re.MULTILINE)
-        
+        sub_element_pattern = re.compile(r'^[a-z]\.\s')  # Matches sub-elements like a., b., etc.
+
         titles = []
         current_title = None
         current_afdeling = None
@@ -74,17 +79,31 @@ class RAGModel:
                 article_number = line.split()[1]
                 article_content_lines = []
                 i += 1
-                while i < len(lines) and not article_pattern.match(lines[i]) and not afdeling_pattern.match(lines[i]) and not title_pattern.match(lines[i]):
-                    article_content_lines.append(lines[i].strip())
+                while (
+                    i < len(lines) and 
+                    not article_pattern.match(lines[i]) and 
+                    not afdeling_pattern.match(lines[i]) and 
+                    not title_pattern.match(lines[i])
+                    ):
+                    # Preserve new lines and indent sub-elements
+                    stripped_line = lines[i].strip()
+                    if sub_element_pattern.match(stripped_line):
+                        article_content_lines.append('    ' + stripped_line)  # Indent sub-elements
+                    else:
+                        article_content_lines.append(stripped_line)
                     i += 1
-                current_article['content'] = "\n".join(article_content_lines)  # Preserve line breaks
-                self.article_mapping[article_number] = current_article  # Map article number to content
+                current_article['content'] = "\n".join(article_content_lines) 
+                self.article_mapping[article_number] = current_article  
                 continue
             i += 1
 
         return titles
 
-    def chunk_penal_code(self, parsed_code, chunk_size=1000, overlap=50):
+    def chunk_penal_code(self, 
+                         parsed_code, 
+                         chunk_size, 
+                         overlap
+                         ):
         """
         Chunk the parsed penal code into smaller text chunks.
         
@@ -102,7 +121,7 @@ class RAGModel:
             for afdeling in title['afdelingen']:
                 afdeling_text = afdeling['afdeling']
                 articles = afdeling['articles']
-                
+
                 current_chunk = f"{title_text}\n{afdeling_text}\n"
                 current_length = len(current_chunk.split())
 
@@ -116,16 +135,16 @@ class RAGModel:
                         chunks.append(current_chunk)
                         current_chunk = f"{title_text}\n{afdeling_text}\n{article_text}"
                         current_length = len(current_chunk.split())
-                        
+
                         # Handle overlap
                         if len(current_chunk.split()) > chunk_size - overlap:
                             chunks.append(current_chunk)
                             current_chunk = ' '.join(current_chunk.split()[-overlap:])
                             current_length = len(current_chunk.split())
-                
+
                 if current_chunk:
                     chunks.append(current_chunk)
-        
+
         return chunks
 
     def chunk_text(self, text):
@@ -139,7 +158,10 @@ class RAGModel:
         - chunks (list): List of text chunks.
         """
         parsed_penal_code = self.parse_penal_code(text)
-        chunks = self.chunk_penal_code(parsed_penal_code)
+        chunks = self.chunk_penal_code(parsed_code=parsed_penal_code, 
+                                       chunk_size=self.chunk_size, 
+                                       overlap=self.chunk_overlap
+                                       )
         self.chunks = chunks
         return chunks
 
@@ -151,7 +173,9 @@ class RAGModel:
         - embeddings (list): List of embeddings for the text chunks.
         """
         embeddings = []
-        embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key)
+        embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key, 
+                                           model=Config.EMBED_MODEL
+                                           )
 
         for chunk in self.chunks:
             response = embedding_model.embed_query(chunk)
@@ -165,7 +189,7 @@ class RAGModel:
         Store the generated embeddings in a FAISS index.
         """
         dimension = len(self.embeddings[0])
-        index = faiss.IndexFlatL2(dimension)
+        index = faiss.IndexFlatIP(dimension)
         index.add(np.array(self.embeddings))
         faiss.write_index(index, self.index_path)
 
@@ -179,24 +203,44 @@ class RAGModel:
         self.index = faiss.read_index(self.index_path)
         return self.index
 
-    def query_embeddings(self, query, k=50):
+    def query_embeddings(self, 
+                         query, 
+                         k=Config.TOP_K, 
+                         min_similarity=Config.MIN_SIMILARITY
+                         ):
         """
-        Query the FAISS index with a given query to find the top-k most similar chunks.
+        Query the FAISS index with a given query to find the top-k most similar chunks
+        with a minimum similarity threshold.
         
         Parameters:
         - query (str): The query text.
         - k (int): Number of top similar chunks to retrieve.
+        - min_similarity (float): Minimum similarity threshold (between 0 and 1).
         
         Returns:
-        - indices (list): List of indices of the top-k similar chunks.
+        - indices (list): List of indices of the similar chunks meeting the similarity threshold.
         """
-        embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key)
+        # Embed the query
+        embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key, model=Config.EMBED_MODEL)
         response = embedding_model.embed_query(query)
         query_embedding = np.array([response], dtype=np.float32)
-        distances, indices = self.index.search(query_embedding, k)
-        return indices[0]
 
-    def get_relevant_chunks(self, query, k=5):
+        # Normalize the query embedding for cosine similarity
+        query_embedding = query_embedding / np.linalg.norm(query_embedding, axis=1, keepdims=True)
+
+        # Search the FAISS index
+        distances, indices = self.index.search(query_embedding, k)
+        print(distances)
+        # Filter results by minimum similarity threshold (inner product in this case)
+        filtered_indices = [
+            indices[0][i]
+            for i in range(len(distances[0]))
+            if distances[0][i] >= min_similarity
+        ]
+
+        return filtered_indices
+
+    def get_relevant_chunks(self, query, k=Config.TOP_K):
         """
         Get the relevant text chunks for a given query.
         
