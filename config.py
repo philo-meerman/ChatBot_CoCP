@@ -40,9 +40,6 @@ class Config:
     # Minimum cosine similarity to return from RAG Model
     MIN_SIMILARITY = 0.5
 
-    # Flag to indicate whether embeddings need to be regenerated (0 for no, 1 for yes)
-    EMBED_REGEN = 0
-
     # Default system role message for the assistant
     SYSTEM_ROLE = """
         Je bent een behulpzame assistant voor een politieambtenaar. 

@@ -1,4 +1,5 @@
 import logging
+import os
 from config import Config
 from utils.pdf_processor import extract_boek_2_text
 from models.rag_model import RAGModel
@@ -7,9 +8,10 @@ from models.rag_model import RAGModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def initialize_rag_model():
     """
-    Initialize the RAG model by extracting text from the PDF, processing it, 
+    Initialize the RAG model by extracting text from the PDF, processing it,
     generating embeddings, and storing/loading the FAISS index.
 
     Returns:
@@ -28,13 +30,22 @@ def initialize_rag_model():
     # Process and chunk the text
     rag_model.chunk_text(pdf_text)
 
-    # Generate embeddings and store them
-    if Config.EMBED_REGEN == 1:
+    # Check if the embeddings file exists
+    embeddings_file_path = os.path.join(
+        os.path.dirname(__file__), "..", "embeddings.index"
+    )
+    embeddings_file_exists = os.path.exists(embeddings_file_path)
+
+    # Generate embeddings and store them if necessary
+    if not embeddings_file_exists:
+        logger.info(
+            "Embeddings file not found. Generating embeddings and storing them."
+        )
         rag_model.generate_embeddings()
         rag_model.store_embeddings()
-
-    # Load embeddings (optional, if not already in memory)
-    rag_model.load_embeddings()
+    else:
+        logger.info("Loading existing embeddings.")
+        rag_model.load_embeddings()
 
     logger.info("RAG model initialized")
 
