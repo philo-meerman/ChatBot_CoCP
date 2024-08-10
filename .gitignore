@@ -132,3 +132,4 @@ launch.json
 run.py
 flask_session/
 web/.DS_Store
+output.png

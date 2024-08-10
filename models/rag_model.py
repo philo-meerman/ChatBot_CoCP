@@ -3,6 +3,12 @@ import faiss
 import numpy as np
 import re
 from config import Config
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
 
 class RAGModel:
     """
@@ -38,112 +44,240 @@ class RAGModel:
         self.embeddings = []
         self.article_mapping = {}
 
+
     def parse_penal_code(self, text):
         """
-        Parse the penal code text into titles, afdelingen, and articles.
-        
+        Parse the penal code text into a hierarchical structure of chapters, titles, afdelingen, and articles.
+
         Parameters:
         - text (str): The penal code text.
-        
-        Returns:
-        - titles (list): List of parsed titles with afdelingen and articles.
-        """
-        # Define regex patterns for titles, afdelingen, and articles
-        title_pattern = re.compile(r'^TITEL\s+\d+.*$', re.MULTILINE)
-        afdeling_pattern = re.compile(r'^AFDELING\s+\d+.*$', re.MULTILINE)
-        article_pattern = re.compile(r'^Artikel\s+\d+\.\d+\.\d+', re.MULTILINE)
-        sub_element_pattern = re.compile(r'^[a-z]\.\s')  # Matches sub-elements like a., b., etc.
 
-        titles = []
+        Returns:
+        - chapters (list): List of parsed chapters with titles, afdelingen, and articles.
+        - self.article_mapping (dict): A dictionary mapping article numbers to their content and metadata.
+        """
+        # Define regex patterns for hoofdstuk, titles, afdelingen, and articles
+        hoofdstuk_pattern = re.compile(r"^HOOFDSTUK\s+\d+.*$", re.MULTILINE)
+        title_pattern = re.compile(r"^TITEL\s+\d+.*$", re.MULTILINE)
+        afdeling_pattern = re.compile(r"^AFDELING\s+\d+.*$", re.MULTILINE)
+        article_pattern = re.compile(r"^Artikel\s+\d+\.\d+\.\d+", re.MULTILINE)
+
+        chapters = []
+        self.article_mapping = {}
+        current_hoofdstuk = None
         current_title = None
         current_afdeling = None
+        current_article = None
+
+        def get_article_number(article_line):
+            """Extract the article number from an article line."""
+            match = re.search(r"\d+\.\d+\.\d+", article_line)
+            return match.group() if match else None
+
+        last_article_number = None
 
         lines = text.splitlines()
         i = 0
+
         while i < len(lines):
             line = lines[i].strip()
-            if title_pattern.match(line):
-                current_title = {'title': line, 'afdelingen': []}
-                titles.append(current_title)
+
+            # Identify Hoofdstukken
+            if hoofdstuk_pattern.match(line):
+                current_hoofdstuk = {"hoofdstuk": line, "titles": [], "content": ""}
+                chapters.append(current_hoofdstuk)
+                current_title = None
                 current_afdeling = None
+                current_article = None
+                last_article_number = None
+
+            # Identify Titles within Hoofdstukken
+            elif title_pattern.match(line):
+                current_title = {
+                    "title": line,
+                    "afdelingen": [],
+                    "articles": [],
+                    "content": "",
+                }
+                if current_hoofdstuk is not None:
+                    current_hoofdstuk["titles"].append(current_title)
+                else:
+                    # If no current hoofdstuk, create an empty one to contain the title
+                    current_hoofdstuk = {
+                        "hoofdstuk": "",
+                        "titles": [current_title],
+                        "content": "",
+                    }
+                    chapters.append(current_hoofdstuk)
+                current_afdeling = None
+                current_article = None
+                last_article_number = None
+
+            # Identify Afdelingen within Titles
             elif afdeling_pattern.match(line):
-                current_afdeling = {'afdeling': line, 'articles': []}
-                current_title['afdelingen'].append(current_afdeling)
+                if current_title is None:
+                    # Ensure current_title is initialized to avoid NoneType error
+                    current_title = {
+                        "title": "",
+                        "afdelingen": [],
+                        "articles": [],
+                        "content": "",
+                    }
+                    current_hoofdstuk["titles"].append(current_title)
+                current_afdeling = {"afdeling": line, "articles": [], "content": ""}
+                current_title["afdelingen"].append(current_afdeling)
+                current_article = None
+                last_article_number = None
+
+            # Identify Articles within Afdelingen or directly under Titles
             elif article_pattern.match(line):
-                if current_afdeling is None:
-                    # Handle case where article appears without afdeling
-                    current_afdeling = {'afdeling': '', 'articles': []}
-                    current_title['afdelingen'].append(current_afdeling)
-                current_article = {'article': line, 'content': ''}
-                current_afdeling['articles'].append(current_article)
-                article_number = line.split()[1]
-                article_content_lines = []
-                i += 1
-                while (
-                    i < len(lines) and 
-                    not article_pattern.match(lines[i]) and 
-                    not afdeling_pattern.match(lines[i]) and 
-                    not title_pattern.match(lines[i])
-                    ):
-                    # Preserve new lines and indent sub-elements
-                    stripped_line = lines[i].strip()
-                    if sub_element_pattern.match(stripped_line):
-                        article_content_lines.append('    ' + stripped_line)  # Indent sub-elements
+                article_number = get_article_number(line)
+
+                # Check if the current article number logically follows the last article number
+                if last_article_number:
+                    last_parts = list(map(int, last_article_number.split(".")))
+                    current_parts = list(map(int, article_number.split(".")))
+
+                    # Only consider it a new article if the number increments logically
+                    is_new_article = (
+                        current_parts[0] > last_parts[0]
+                        or (
+                            current_parts[0] == last_parts[0]
+                            and current_parts[1] > last_parts[1]
+                        )
+                        or (
+                            current_parts[0] == last_parts[0]
+                            and current_parts[1] == last_parts[1]
+                            and current_parts[2] > last_parts[2]
+                        )
+                    )
+                else:
+                    is_new_article = True
+
+                if is_new_article:
+                    current_article = {"article": article_number, "content": line}
+
+                    # Add article to article_mapping with metadata
+                    self.article_mapping[article_number] = {
+                        "content": line,
+                        "chapter": (
+                            current_hoofdstuk["hoofdstuk"] if current_hoofdstuk else ""
+                        ),
+                        "title": current_title["title"] if current_title else "",
+                        "afdeling": (
+                            current_afdeling["afdeling"] if current_afdeling else ""
+                        ),
+                    }
+
+                    if current_afdeling:
+                        current_afdeling["articles"].append(current_article)
                     else:
-                        article_content_lines.append(stripped_line)
-                    i += 1
-                current_article['content'] = "\n".join(article_content_lines) 
-                self.article_mapping[article_number] = current_article  
-                continue
+                        if current_title is None:
+                            # Ensure current_title is initialized
+                            current_title = {
+                                "title": "",
+                                "afdelingen": [],
+                                "articles": [],
+                                "content": "",
+                            }
+                            current_hoofdstuk["titles"].append(current_title)
+                        current_title["articles"].append(current_article)
+                    last_article_number = article_number
+                else:
+                    if current_article:
+                        current_article["content"] += " " + line
+                        self.article_mapping[last_article_number]["content"] += " " + line
+
+            else:
+                # Append content to the current context (chapter, title, afdeling, or article)
+                if current_article:
+                    current_article["content"] += " " + line
+                    self.article_mapping[last_article_number]["content"] += " " + line
+                elif current_afdeling:
+                    current_afdeling["content"] += " " + line
+                elif current_title:
+                    current_title["content"] += " " + line
+                elif current_hoofdstuk:
+                    current_hoofdstuk["content"] += " " + line
+
             i += 1
 
-        return titles
+        return chapters
 
-    def chunk_penal_code(self, 
-                         parsed_code, 
-                         chunk_size, 
-                         overlap
-                         ):
+    def chunk_penal_code(self, parsed_code, chunk_size, overlap):
         """
         Chunk the parsed penal code into smaller text chunks.
-        
+
         Parameters:
-        - parsed_code (list): Parsed titles, afdelingen, and articles.
+        - parsed_code (list): Parsed chapters containing titles, afdelingen, and articles.
         - chunk_size (int): Size of the text chunks.
         - overlap (int): Overlap size between chunks.
-        
+
         Returns:
         - chunks (list): List of text chunks.
         """
         chunks = []
-        for title in parsed_code:
-            title_text = title['title']
-            for afdeling in title['afdelingen']:
-                afdeling_text = afdeling['afdeling']
-                articles = afdeling['articles']
 
-                current_chunk = f"{title_text}\n{afdeling_text}\n"
-                current_length = len(current_chunk.split())
+        for chapter in parsed_code:
+            chapter_text = chapter["hoofdstuk"]
 
-                for article in articles:
-                    article_text = f"{article['article']}\n{article['content']}"
-                    article_length = len(article_text.split())
-                    if current_length + article_length <= chunk_size:
-                        current_chunk += f"\n{article_text}"
-                        current_length += article_length
-                    else:
-                        chunks.append(current_chunk)
-                        current_chunk = f"{title_text}\n{afdeling_text}\n{article_text}"
-                        current_length = len(current_chunk.split())
+            for title in chapter["titles"]:
+                title_text = title["title"]
 
-                        # Handle overlap
-                        if len(current_chunk.split()) > chunk_size - overlap:
+                for afdeling in title["afdelingen"]:
+                    afdeling_text = afdeling["afdeling"]
+                    articles = afdeling["articles"]
+
+                    # Initialize current_chunk and current_length
+                    current_chunk = f"{chapter_text}\n{title_text}\n{afdeling_text}\n"
+                    current_length = len(current_chunk.split())
+
+                    for article in articles:
+                        article_text = f"{article['article']}\n{article['content']}"
+                        article_length = len(article_text.split())
+
+                        if current_length + article_length <= chunk_size:
+                            current_chunk += f"\n{article_text}"
+                            current_length += article_length
+                        else:
                             chunks.append(current_chunk)
-                            current_chunk = ' '.join(current_chunk.split()[-overlap:])
+                            current_chunk = f"{chapter_text}\n{title_text}\n{afdeling_text}\n{article_text}"
                             current_length = len(current_chunk.split())
 
-                if current_chunk:
-                    chunks.append(current_chunk)
+                            # Handle overlap
+                            if len(current_chunk.split()) > chunk_size - overlap:
+                                chunks.append(current_chunk)
+                                current_chunk = " ".join(current_chunk.split()[-overlap:])
+                                current_length = len(current_chunk.split())
+
+                    if current_chunk:
+                        chunks.append(current_chunk)
+
+                # Handle articles directly under titles (without afdelingen)
+                if not title["afdelingen"]:  # Check if there are no afdelingen
+                    current_chunk = f"{chapter_text}\n{title_text}\n"  # Initialize chunk with chapter and title
+                    current_length = len(current_chunk.split())
+
+                    for article in title["articles"]:
+                        article_text = f"{article['article']}\n{article['content']}"
+                        article_length = len(article_text.split())
+
+                        if current_length + article_length <= chunk_size:
+                            current_chunk += f"\n{article_text}"
+                            current_length += article_length
+                        else:
+                            chunks.append(current_chunk)
+                            current_chunk = f"{chapter_text}\n{title_text}\n{article_text}"
+                            current_length = len(current_chunk.split())
+
+                            # Handle overlap
+                            if len(current_chunk.split()) > chunk_size - overlap:
+                                chunks.append(current_chunk)
+                                current_chunk = " ".join(current_chunk.split()[-overlap:])
+                                current_length = len(current_chunk.split())
+
+                    if current_chunk:
+                        chunks.append(current_chunk)
 
         return chunks
 
@@ -230,13 +364,21 @@ class RAGModel:
 
         # Search the FAISS index
         distances, indices = self.index.search(query_embedding, k)
-        print(distances)
+
         # Filter results by minimum similarity threshold (inner product in this case)
         filtered_indices = [
             indices[0][i]
             for i in range(len(distances[0]))
             if distances[0][i] >= min_similarity
         ]
+
+        # Print the similarity scores of the returned objects
+        print("Similarity Scores of Returned Chunks:")
+        for i in range(len(distances[0])):
+            if distances[0][i] >= min_similarity:
+                print(
+                    f"Chunk Index: {indices[0][i]}, Similarity Score: {distances[0][i]:.4f}"
+                )
 
         return filtered_indices
 
@@ -267,8 +409,19 @@ class RAGModel:
         Returns:
         - str: The content of the specified article or an error message if not found.
         """
+        logging.info(
+            f"Attempting to retrieve content for article number: {article_number}"
+        )
+
         article = self.article_mapping.get(article_number)
+
         if article:
-            return article['content']
+            logging.info(
+                f"Content successfully retrieved for article number: {article_number}"
+            )
+            return article["content"]
         else:
+            logging.warning(
+                f"Article number {article_number} not found in article mapping."
+            )
             return "Sorry, het gevraagde artikel kon niet worden gevonden."

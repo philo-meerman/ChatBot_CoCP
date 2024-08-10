@@ -3,11 +3,11 @@ from PyPDF2 import PdfReader
 
 
 def extract_text_from_pdf(pdf_path):
-        reader = PdfReader(pdf_path)
-        text = ""
-        for page in reader.pages:
-            text += page.extract_text()
-        return text
+    reader = PdfReader(pdf_path)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text() + "\n "
+    return text
 
 
 def clean_text(text):
@@ -36,4 +36,3 @@ def extract_boek_2_text(pdf_path):
     boek_2_text = clean_text(full_text[start_pos:end_pos])
 
     return boek_2_text
-

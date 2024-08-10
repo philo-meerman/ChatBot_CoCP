@@ -49,13 +49,14 @@ def generate_answer(query, rag_model, conversation_history=None):
 
         # Retrieve relevant chunks from the RAG model using the summary
         relevant_chunks = rag_model.get_relevant_chunks(summary, k=Config.TOP_K)
+        
         if not relevant_chunks:
             # If no relevant chunks are found, return a message indicating that the answer cannot be found
             answer = "Het antwoord op deze vraag kan niet worden gevonden in de gegeven context."
         
         else:
             context = "\n\n".join(relevant_chunks)
-
+            print(context)
             # Prepare the messages for the LLM
             messages = [
                 ChatMessage(role="system", content=Config.SYSTEM_ROLE),
