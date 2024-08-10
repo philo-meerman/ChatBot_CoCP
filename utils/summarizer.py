@@ -8,6 +8,7 @@ from utils.api import set_openai_api_key
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def summarize_history(history):
     """
     Summarize the conversation history to retain relevant context.
@@ -17,12 +18,15 @@ def summarize_history(history):
 
     Returns:
     - summary (str): The summarized conversation history.
+    - usage (CompletionUsage): The token usage data from the LLM API call.
     """
     # Set the OpenAI API key
     set_openai_api_key()
 
     # Initialize the OpenAI chat model for summarization
-    llm = OpenAI(temperature=0, model=Config.CHAT_MODEL, max_tokens=Config.SUMMARY_MAX_TOKENS)
+    llm = OpenAI(
+        temperature=0, model=Config.CHAT_MODEL, max_tokens=Config.SUMMARY_MAX_TOKENS
+    )
 
     # Prepare the summarization prompt
     prompt = "Vat de volgende gespreksgeschiedenis samen om de relevante context te behouden:\n\n"
@@ -39,4 +43,7 @@ def summarize_history(history):
     # Log the generated summary
     logger.info("Generated summary:\n%s", summary)
 
-    return summary
+    # Extract and return the token usage data
+    usage = response.raw.usage if hasattr(response.raw, "usage") else None
+
+    return summary, usage

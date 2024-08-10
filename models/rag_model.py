@@ -4,6 +4,7 @@ import numpy as np
 import re
 from config import Config
 import logging
+import tiktoken 
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -43,7 +44,6 @@ class RAGModel:
         self.chunks = []
         self.embeddings = []
         self.article_mapping = {}
-
 
     def parse_penal_code(self, text):
         """
@@ -307,13 +307,27 @@ class RAGModel:
         - embeddings (list): List of embeddings for the text chunks.
         """
         embeddings = []
+        total_cost = 0.0  # To track the total cost of embeddings
         embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key, 
                                            model=Config.EMBED_MODEL
                                            )
 
+        encoding = tiktoken.get_encoding("cl100k_base")
+        input_token_price = 0.02 / 1000000
+
         for chunk in self.chunks:
+            # Calculate the number of tokens in the chunk
+            input_tokens = encoding.encode(chunk)
+            num_tokens = len(input_tokens)
+
+            # Estimate the cost for this chunk
+            estimated_cost = num_tokens * input_token_price
+            total_cost += estimated_cost
+
             response = embedding_model.embed_query(chunk)
             embeddings.append(response)
+
+        logging.info(f"Total estimated cost for all embeddings: ${total_cost:.5f}")
 
         self.embeddings = embeddings
         return embeddings
@@ -356,6 +370,18 @@ class RAGModel:
         """
         # Embed the query
         embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key, model=Config.EMBED_MODEL)
+        # Calculate the token cost for the query using "cl100k_base" encoding
+        encoding = tiktoken.get_encoding("cl100k_base")
+        input_tokens = encoding.encode(query)
+        num_tokens = len(input_tokens)
+
+        # Price estimation
+        input_token_price = 0.02 / 1000000
+        estimated_cost = num_tokens * input_token_price
+
+        # Log the token usage and cost
+        logging.info(f"Estimated cost for embedding this query: ${estimated_cost:.5f}")
+
         response = embedding_model.embed_query(query)
         query_embedding = np.array([response], dtype=np.float32)
 
@@ -380,7 +406,7 @@ class RAGModel:
                     f"Chunk Index: {indices[0][i]}, Similarity Score: {distances[0][i]:.4f}"
                 )
 
-        return filtered_indices
+        return filtered_indices, estimated_cost
 
     def get_relevant_chunks(self, query, k=Config.TOP_K):
         """
@@ -393,11 +419,11 @@ class RAGModel:
         Returns:
         - relevant_chunks (list): List of relevant text chunks.
         """
-        indices = self.query_embeddings(query, k)
+        indices, cost = self.query_embeddings(query, k)
         relevant_chunks = [
             self.chunks[idx] for idx in indices if idx < len(self.chunks)
         ]
-        return relevant_chunks
+        return relevant_chunks, cost
 
     def get_exact_article(self, article_number):
         """

@@ -37,6 +37,8 @@ def generate_answer(query, rag_model, conversation_history=None):
 
     conversation_history.append(ChatMessage(role="user", content=query))
 
+    total_estimated_cost = 0.0  # Initialize the total cost variable
+
     # Check if the query requests a direct citation
     if is_direct_citation_request(query):
         logger.info("Query requests specific section text")
@@ -44,16 +46,38 @@ def generate_answer(query, rag_model, conversation_history=None):
         answer = get_direct_citation(query, rag_model, conversation_history)
     else:
         # Summarize the conversation history
-        summary = summarize_history(conversation_history)
+        summary, summary_usage = summarize_history(conversation_history)
         logger.info("Summarized conversation history for RAG model query:\n%s", summary)
 
+        # Calculate cost for summarization
+        if summary_usage:
+            input_token_price = 0.15 / 1000000
+            output_token_price = 0.60 / 1000000
+
+            prompt_tokens = summary_usage.prompt_tokens
+            completion_tokens = summary_usage.completion_tokens
+
+            summary_cost = (prompt_tokens * input_token_price) + (
+                completion_tokens * output_token_price
+            )
+
+            total_estimated_cost += summary_cost  # Add to total cost
+
+            logger.info(
+                f"Summarization Token usage - Prompt: {prompt_tokens}, Completion: {completion_tokens}"
+            )
+            logger.info(f"Estimated cost of summarization: ${summary_cost:.5f}")
+
         # Retrieve relevant chunks from the RAG model using the summary
-        relevant_chunks = rag_model.get_relevant_chunks(summary, k=Config.TOP_K)
-        
+        relevant_chunks, chunk_cost = rag_model.get_relevant_chunks(
+            summary, k=Config.TOP_K
+        )
+        total_estimated_cost += chunk_cost
+
         if not relevant_chunks:
             # If no relevant chunks are found, return a message indicating that the answer cannot be found
             answer = "Het antwoord op deze vraag kan niet worden gevonden in de gegeven context."
-        
+
         else:
             context = "\n\n".join(relevant_chunks)
             print(context)
@@ -77,6 +101,30 @@ def generate_answer(query, rag_model, conversation_history=None):
             responses = llm.chat(messages)
             answer = responses.message.content
 
+            # Estimate and log the cost
+            if hasattr(responses.raw, "usage"):
+                token_usage = responses.raw.usage
+                prompt_tokens = token_usage.prompt_tokens
+                completion_tokens = token_usage.completion_tokens
+                total_tokens = token_usage.total_tokens
+
+                input_token_price = 0.15 / 1000000
+                output_token_price = 0.60 / 1000000
+
+                estimated_cost = (prompt_tokens * input_token_price) + (
+                    completion_tokens * output_token_price
+                )
+
+                total_estimated_cost += estimated_cost  # Add to total cost
+
+                logger.info(
+                    f"Token usage - Prompt: {prompt_tokens}, Completion: {completion_tokens}, Total: {total_tokens}"
+                )
+                logger.info(f"Estimated cost of this API call: ${estimated_cost:.5f}")
+            else:
+                logger.warning("Token usage information is not available.")
+
+    logger.info(f"Total estimated cost for the API calls: ${total_estimated_cost:.5f}")
     logger.info("Generated answer:\n%s", answer)
 
     # Add the assistant's response to the conversation history

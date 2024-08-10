@@ -101,7 +101,7 @@ def get_direct_citation(query, rag_model, conversation_history, k=1):
                 logging.warning(f"No content found for article {num}.")
 
     logging.info("No specific article number found. Falling back to general search.")
-    relevant_chunks = rag_model.get_relevant_chunks(query, k)
+    relevant_chunks, _ = rag_model.get_relevant_chunks(query, k)
     if relevant_chunks:
         context = "\n\n".join(relevant_chunks)
         logging.info("Relevant chunks found and compiled into a citation.")

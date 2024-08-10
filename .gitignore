@@ -133,3 +133,4 @@ run.py
 flask_session/
 web/.DS_Store
 output.png
+evaluation/comparison_results_*
