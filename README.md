@@ -1,15 +1,13 @@
 # Chatbot Project
 
-This project implements a chatbot using OpenAI's GPT-3.5 Turbo LLM and a RAG model for handling PDF files, with a browser-based user interface.
+This project implements a chatbot using OpenAI's GPT-4o Mini LLM and a RAG model for handling PDF files, with a browser-based user interface.
 
 ## Setup
 
 1. Clone the repository.
 2. Install dependencies with `pip install -r requirements.txt`.
 3. Create a `.env` file in the project folder to store your `OPENAI_API_KEY` variable.
-4. The Vector Store should be available. Adjust the Config `EMBED_REGEN` parameter to `1` to create it. Leave it `0` otherwise.
-5. To run the tests, use the following command: `python -m unittest discover -s tests`.
-6. Run the Flask app with `python web/app.py`.
+4. Run the Flask app with `python web/app.py`.
 
 ## Usage
 
