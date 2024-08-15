@@ -124,5 +124,13 @@ dmypy.json
 cython_debug/
 
 # macOS
-/.DS_Store
+*.DS_Store
+embeddings.index
+testcase.ipynb
+test-1.ipynb
+launch.json
+run.py
+flask_session/
 web/.DS_Store
+output.png
+evaluation/comparison_results_*

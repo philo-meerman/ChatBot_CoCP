@@ -1,4 +1,3 @@
-// web/static/scripts.js
 function sendMessage() {
     const userInput = document.getElementById('user-input').value;
     if (userInput.trim() === "") return;
@@ -16,11 +15,14 @@ function sendMessage() {
     // Scroll to the bottom of the chat box
     chatBox.scrollTop = chatBox.scrollHeight;
 
-    // Show the loader where the bot response will appear
-    const loader = document.createElement('div');
-    loader.className = 'spinner';
-    loader.id = 'loader';
-    chatBox.appendChild(loader);
+    // Create a bot message bubble with a loader
+    const botMessage = document.createElement('div');
+    botMessage.className = 'message bot-message';
+    botMessage.innerHTML = 'Even geduld... <div class="spinner"></div>'; // Adding spinner inside the bot message
+    chatBox.appendChild(botMessage);
+
+    // Scroll to the bottom of the chat box
+    chatBox.scrollTop = chatBox.scrollHeight;
 
     // Fetch the response from the server
     fetch('/chat', {
@@ -32,22 +34,16 @@ function sendMessage() {
     })
     .then(response => response.json())
     .then(data => {
-        // Remove the loader
-        chatBox.removeChild(loader);
-
-        // Append the bot's response to the chat box
-        const botResponse = document.createElement('div');
-        botResponse.className = 'message bot-message';
-        botResponse.textContent = data.response;
-        chatBox.appendChild(botResponse);
+        // Replace the loader with the bot's response
+        botMessage.innerHTML = data.response.replace(/\n/g, '<br>');
 
         // Scroll to the bottom of the chat box
         chatBox.scrollTop = chatBox.scrollHeight;
     })
     .catch(error => {
         console.error('Error:', error);
-        // Remove the loader in case of an error
-        chatBox.removeChild(loader);
+        // Remove the loader in case of an error and show an error message
+        botMessage.innerHTML = 'Oeps, er gaat iets fout.';
     });
 }
 
