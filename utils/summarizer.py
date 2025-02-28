@@ -1,3 +1,22 @@
+"""
+Module for Summarizing Conversation History
+
+This module provides a function to summarize a conversation history using an OpenAI chat model.
+It constructs a summarization prompt from the conversation history, logs the prompt and generated
+summary, and returns the summary along with token usage data from the API call.
+
+Dependencies:
+    - llama_index.core.llms: Provides the ChatMessage class.
+    - llama_index.llms.openai: Provides the OpenAI class for interacting with the OpenAI API.
+    - config: Contains configuration parameters such as CHAT_MODEL and SUMMARY_MAX_TOKENS.
+    - utils.api: Provides the set_openai_api_key function to configure the OpenAI API key.
+    - logging: Used for logging information about the summarization process.
+
+Usage:
+    >>> from utils.summarizer import summarize_history
+    >>> summary, usage = summarize_history(conversation_history)
+"""
+
 import logging
 from llama_index.core.llms import ChatMessage
 from llama_index.llms.openai import OpenAI

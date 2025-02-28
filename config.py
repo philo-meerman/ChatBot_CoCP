@@ -1,8 +1,13 @@
+"""
+This module contains configuration settings for the ChatBot_DPC application.
+"""
+
 import os
 from dotenv import load_dotenv
 
 # Load environment variables from a .env file
 load_dotenv()
+
 
 class Config:
     """
@@ -10,8 +15,10 @@ class Config:
     needed throughout the application.
     """
 
+    # pylint: disable=too-few-public-methods
+
     # API key for OpenAI services, loaded from environment variables
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # pylint: disable=no-member
 
     # Model configuration for OpenAI's chat model
     CHAT_MODEL = "gpt-4o-mini"

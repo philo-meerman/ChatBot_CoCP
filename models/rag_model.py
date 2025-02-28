@@ -1,10 +1,57 @@
-from langchain_openai import OpenAIEmbeddings
+# pylint: skip-file
+"""
+RAG Model Module
+
+This module implements the Retrieval-Augmented Generation (RAG) model for processing legal texts,
+specifically for the ChatBot_DPC project. The RAGModel class encapsulates functionalities to parse
+and structure penal code documents, chunk the text into manageable segments, generate embeddings for
+each chunk using OpenAI's embedding API, and store these embeddings in a FAISS index for efficient
+similarity search. In addition, the module provides methods to query the FAISS index to retrieve
+relevant text chunks based on a query, as well as retrieve the exact content of a specific legal
+article using its article number.
+
+Key Features:
+    - Parsing: Converts raw penal code text into a hierarchical structure (chapters, titles,
+      afdelingen, and articles) while maintaining a mapping of article numbers to their content.
+    - Chunking: Splits the parsed text into smaller chunks with configurable chunk sizes and
+      overlap to facilitate effective embedding generation.
+    - Embedding Generation: Utilizes the OpenAIEmbeddings model from langchain_openai to create
+      embeddings for each text chunk, with token count and cost estimation via tiktoken.
+    - FAISS Integration: Stores generated embeddings in a FAISS index for fast similarity search,
+      and provides methods to load the index and query for the most relevant chunks.
+    - Retrieval: Returns relevant text chunks based on query similarity and provides exact article
+      retrieval functionality.
+
+Dependencies:
+    - langchain_openai: For generating text embeddings.
+    - faiss: For indexing and similarity search.
+    - numpy: For numerical operations.
+    - re: For regex-based parsing of legal texts.
+    - tiktoken: For tokenization and cost estimation.
+    - config: For configuration settings (e.g., API keys, model parameters).
+    - logging: For logging execution details and cost estimates.
+
+Usage Example:
+    >>> from models.rag_model import RAGModel
+    >>> rag_model = RAGModel()
+    >>> parsed_text = rag_model.parse_penal_code(legal_text)
+    >>> chunks = rag_model.chunk_text(legal_text)
+    >>> embeddings = rag_model.generate_embeddings()
+    >>> rag_model.store_embeddings()
+    >>> index = rag_model.load_embeddings()
+    >>> relevant_chunks, cost = rag_model.get_relevant_chunks("query text")
+    >>> article = rag_model.get_exact_article("5.2.1")
+"""
+
+import logging
+import re
+
 import faiss
 import numpy as np
-import re
+import tiktoken
+from langchain_openai import OpenAIEmbeddings
+
 from config import Config
-import logging
-import tiktoken 
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -14,7 +61,7 @@ logging.basicConfig(
 class RAGModel:
     """
     A class to represent a Retrieval-Augmented Generation (RAG) model.
-    
+
     Attributes:
     - api_key (str): API key for accessing OpenAI services.
     - chunk_size (int): Size of the text chunks.
@@ -24,14 +71,15 @@ class RAGModel:
     - embeddings (list): List of embeddings for the text chunks.
     """
 
-    def __init__(self, 
-                 chunk_size=Config.CHUNK_SIZE, 
-                 chunk_overlap=Config.CHUNK_OVERLAP, 
-                 index_path="embeddings.index"
-                 ):
+    def __init__(
+        self,
+        chunk_size=Config.CHUNK_SIZE,
+        chunk_overlap=Config.CHUNK_OVERLAP,
+        index_path="embeddings.index",
+    ):
         """
         Initialize the RAG model with the given parameters.
-        
+
         Parameters:
         - chunk_size (int): Size of the text chunks.
         - chunk_overlap (int): Overlap size between chunks.
@@ -47,14 +95,16 @@ class RAGModel:
 
     def parse_penal_code(self, text):
         """
-        Parse the penal code text into a hierarchical structure of chapters, titles, afdelingen, and articles.
+        Parse the penal code text into a hierarchical structure of chapters, titles, afdelingen,
+        and articles.
 
         Parameters:
         - text (str): The penal code text.
 
         Returns:
         - chapters (list): List of parsed chapters with titles, afdelingen, and articles.
-        - self.article_mapping (dict): A dictionary mapping article numbers to their content and metadata.
+        - self.article_mapping (dict): A dictionary mapping article numbers to their content
+          and metadata.
         """
         # Define regex patterns for hoofdstuk, titles, afdelingen, and articles
         hoofdstuk_pattern = re.compile(r"^HOOFDSTUK\s+\d+.*$", re.MULTILINE)
@@ -186,7 +236,9 @@ class RAGModel:
                 else:
                     if current_article:
                         current_article["content"] += " " + line
-                        self.article_mapping[last_article_number]["content"] += " " + line
+                        self.article_mapping[last_article_number]["content"] += (
+                            " " + line
+                        )
 
             else:
                 # Append content to the current context (chapter, title, afdeling, or article)
@@ -241,13 +293,18 @@ class RAGModel:
                             current_length += article_length
                         else:
                             chunks.append(current_chunk)
-                            current_chunk = f"{chapter_text}\n{title_text}\n{afdeling_text}\n{article_text}"
+                            current_chunk = (
+                                f"{chapter_text}\n{title_text}\n"
+                                f"{afdeling_text}\n{article_text}"
+                            )
                             current_length = len(current_chunk.split())
 
                             # Handle overlap
                             if len(current_chunk.split()) > chunk_size - overlap:
                                 chunks.append(current_chunk)
-                                current_chunk = " ".join(current_chunk.split()[-overlap:])
+                                current_chunk = " ".join(
+                                    current_chunk.split()[-overlap:]
+                                )
                                 current_length = len(current_chunk.split())
 
                     if current_chunk:
@@ -255,7 +312,7 @@ class RAGModel:
 
                 # Handle articles directly under titles (without afdelingen)
                 if not title["afdelingen"]:  # Check if there are no afdelingen
-                    current_chunk = f"{chapter_text}\n{title_text}\n"  # Initialize chunk with chapter and title
+                    current_chunk = f"{chapter_text}\n{title_text}\n"
                     current_length = len(current_chunk.split())
 
                     for article in title["articles"]:
@@ -267,13 +324,17 @@ class RAGModel:
                             current_length += article_length
                         else:
                             chunks.append(current_chunk)
-                            current_chunk = f"{chapter_text}\n{title_text}\n{article_text}"
+                            current_chunk = (
+                                f"{chapter_text}\n{title_text}\n{article_text}"
+                            )
                             current_length = len(current_chunk.split())
 
                             # Handle overlap
                             if len(current_chunk.split()) > chunk_size - overlap:
                                 chunks.append(current_chunk)
-                                current_chunk = " ".join(current_chunk.split()[-overlap:])
+                                current_chunk = " ".join(
+                                    current_chunk.split()[-overlap:]
+                                )
                                 current_length = len(current_chunk.split())
 
                     if current_chunk:
@@ -284,33 +345,34 @@ class RAGModel:
     def chunk_text(self, text):
         """
         Chunk the text into smaller chunks.
-        
+
         Parameters:
         - text (str): The text to be chunked.
-        
+
         Returns:
         - chunks (list): List of text chunks.
         """
         parsed_penal_code = self.parse_penal_code(text)
-        chunks = self.chunk_penal_code(parsed_code=parsed_penal_code, 
-                                       chunk_size=self.chunk_size, 
-                                       overlap=self.chunk_overlap
-                                       )
+        chunks = self.chunk_penal_code(
+            parsed_code=parsed_penal_code,
+            chunk_size=self.chunk_size,
+            overlap=self.chunk_overlap,
+        )
         self.chunks = chunks
         return chunks
 
     def generate_embeddings(self):
         """
         Generate embeddings for the text chunks.
-        
+
         Returns:
         - embeddings (list): List of embeddings for the text chunks.
         """
         embeddings = []
         total_cost = 0.0  # To track the total cost of embeddings
-        embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key, 
-                                           model=Config.EMBED_MODEL
-                                           )
+        embedding_model = OpenAIEmbeddings(
+            openai_api_key=self.api_key, model=Config.EMBED_MODEL
+        )
 
         encoding = tiktoken.get_encoding("cl100k_base")
         input_token_price = 0.02 / 1000000
@@ -327,7 +389,7 @@ class RAGModel:
             response = embedding_model.embed_query(chunk)
             embeddings.append(response)
 
-        logging.info(f"Total estimated cost for all embeddings: ${total_cost:.5f}")
+        logging.info("Total estimated cost for all embeddings: $%.5f", total_cost)
 
         self.embeddings = embeddings
         return embeddings
@@ -344,32 +406,32 @@ class RAGModel:
     def load_embeddings(self):
         """
         Load the FAISS index with stored embeddings.
-        
+
         Returns:
         - index: The loaded FAISS index.
         """
         self.index = faiss.read_index(self.index_path)
         return self.index
 
-    def query_embeddings(self, 
-                         query, 
-                         k=Config.TOP_K, 
-                         min_similarity=Config.MIN_SIMILARITY
-                         ):
+    def query_embeddings(
+        self, query, k=Config.TOP_K, min_similarity=Config.MIN_SIMILARITY
+    ):
         """
         Query the FAISS index with a given query to find the top-k most similar chunks
         with a minimum similarity threshold.
-        
+
         Parameters:
         - query (str): The query text.
         - k (int): Number of top similar chunks to retrieve.
         - min_similarity (float): Minimum similarity threshold (between 0 and 1).
-        
+
         Returns:
         - indices (list): List of indices of the similar chunks meeting the similarity threshold.
         """
         # Embed the query
-        embedding_model = OpenAIEmbeddings(openai_api_key=self.api_key, model=Config.EMBED_MODEL)
+        embedding_model = OpenAIEmbeddings(
+            openai_api_key=self.api_key, model=Config.EMBED_MODEL
+        )
         # Calculate the token cost for the query using "cl100k_base" encoding
         encoding = tiktoken.get_encoding("cl100k_base")
         input_tokens = encoding.encode(query)
@@ -380,13 +442,15 @@ class RAGModel:
         estimated_cost = num_tokens * input_token_price
 
         # Log the token usage and cost
-        logging.info(f"Estimated cost for embedding this query: ${estimated_cost:.5f}")
+        logging.info("Estimated cost for embedding this query: $%.5f", estimated_cost)
 
         response = embedding_model.embed_query(query)
         query_embedding = np.array([response], dtype=np.float32)
 
         # Normalize the query embedding for cosine similarity
-        query_embedding = query_embedding / np.linalg.norm(query_embedding, axis=1, keepdims=True)
+        query_embedding = query_embedding / np.linalg.norm(
+            query_embedding, axis=1, keepdims=True
+        )
 
         # Search the FAISS index
         distances, indices = self.index.search(query_embedding, k)
@@ -411,11 +475,11 @@ class RAGModel:
     def get_relevant_chunks(self, query, k=Config.TOP_K):
         """
         Get the relevant text chunks for a given query.
-        
+
         Parameters:
         - query (str): The query text.
         - k (int): Number of top similar chunks to retrieve.
-        
+
         Returns:
         - relevant_chunks (list): List of relevant text chunks.
         """
@@ -436,18 +500,18 @@ class RAGModel:
         - str: The content of the specified article or an error message if not found.
         """
         logging.info(
-            f"Attempting to retrieve content for article number: {article_number}"
+            "Attempting to retrieve content for article number: %s", article_number
         )
 
         article = self.article_mapping.get(article_number)
 
         if article:
             logging.info(
-                f"Content successfully retrieved for article number: {article_number}"
+                "Content successfully retrieved for article number: %s", article_number
             )
             return article["content"]
-        else:
-            logging.warning(
-                f"Article number {article_number} not found in article mapping."
-            )
-            return "Sorry, het gevraagde artikel kon niet worden gevonden."
+
+        logging.warning(
+            "Article number %s not found in article mapping.", article_number
+        )
+        return "Sorry, het gevraagde artikel kon niet worden gevonden."

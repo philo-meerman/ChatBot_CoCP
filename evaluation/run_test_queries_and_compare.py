@@ -1,24 +1,27 @@
+"""
+This script runs test queries against the RAG model, compares generated responses with ground truth,
+and outputs the results for evaluation.
+"""
+
 import sys
 import os
 import re
 import json
 import logging
-from datetime import datetime  # Add this import
-
-# Suppress logging messages below CRITICAL level
-logging.basicConfig(level=logging.CRITICAL)
-
+from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from llama_index.core.llms import ChatMessage
 from llama_index.llms.openai import OpenAI
 
-# Add the root of the project to the system path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
+# pylint: disable=wrong-import-position
 from utils.answer_generator import generate_answer
 from init.init_rag_model import initialize_rag_model
 from config import Config
+
+# Suppress logging messages below CRITICAL level
+logging.basicConfig(level=logging.CRITICAL)
 
 
 def load_json(filepath):
@@ -31,7 +34,7 @@ def load_json(filepath):
     Returns:
     dict: The content of the JSON file as a dictionary.
     """
-    with open(filepath, "r") as file:
+    with open(filepath, "r", encoding="utf-8") as file:
         return json.load(file)
 
 
@@ -101,6 +104,8 @@ def calculate_llm_similarity(generated_response, expected_response, llm):
 
 
 def main():
+    # pylint: disable=too-many-locals
+
     """
     Main function to run test queries, compare responses, and output results.
 
@@ -154,7 +159,8 @@ def main():
     sufficient_count = sum(result["is_sufficient"] for result in results)
     total_count = len(results)
     print(
-        f"Results: {sufficient_count}/{total_count} responses are above the similarity threshold of 0.7"
+        f"Results: {sufficient_count}/{total_count} responses are above "
+        "the similarity threshold of 0.7"
     )
 
     # Print the detailed results in a nicely readable format
@@ -165,7 +171,7 @@ def main():
 
     # Output the results to a JSON file with the timestamp in the filename
     output_filename = f"evaluation/comparison_results_{timestamp}.json"
-    with open(output_filename, "w") as outfile:
+    with open(output_filename, "w", encoding="utf-8") as outfile:
         json.dump(results, outfile, indent=4, ensure_ascii=False)
 
 
