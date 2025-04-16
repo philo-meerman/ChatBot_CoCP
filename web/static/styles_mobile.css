@@ -5,6 +5,11 @@ body {
     box-sizing: border-box; /* Ensure the box-sizing is border-box for all elements */
 }
 
+* {
+    box-sizing: border-box;
+    margin: 0; padding: 0;
+}
+
 #chat-container {
     width: 100%; /* Ensure full width for mobile screens */
     margin: 0 auto;
@@ -59,7 +64,7 @@ button:hover {
 .message {
     display: inline-block;
     margin-bottom: 10px;
-    max-width: 80%; 
+    max-width: 80%;
     word-wrap: break-word;
     padding: 10px;
     border-radius: 10px;
