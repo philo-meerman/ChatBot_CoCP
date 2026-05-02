@@ -50,12 +50,38 @@ import faiss
 import numpy as np
 import tiktoken
 from langchain_openai import OpenAIEmbeddings
+from openai import OpenAI as OpenAIClient
 
 from config import Config
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+
+class _NIMEmbeddings:
+    """
+    Thin embedding wrapper for NVIDIA NIM endpoints.
+    NIM embedding models require an `input_type` field passed via extra_body,
+    which LangChain's OpenAIEmbeddings does not support. This class uses the
+    OpenAI SDK directly so we can pass extra_body freely.
+    """
+
+    def __init__(self, api_key, base_url, model, extra_body=None):
+        self._client = OpenAIClient(api_key=api_key, base_url=base_url)
+        self._model = model
+        self._extra_body = extra_body or {}
+
+    def embed_query(self, text):
+        return self.embed_documents([text])[0]
+
+    def embed_documents(self, texts):
+        response = self._client.embeddings.create(
+            input=texts,
+            model=self._model,
+            extra_body=self._extra_body,
+        )
+        return [item.embedding for item in response.data]
 
 
 class RAGModel:
@@ -370,9 +396,18 @@ class RAGModel:
         """
         embeddings = []
         total_cost = 0.0  # To track the total cost of embeddings
-        embedding_model = OpenAIEmbeddings(
-            openai_api_key=self.api_key, model=Config.EMBED_MODEL
-        )
+        if Config.OPENAI_API_BASE and Config.EMBED_MODEL_KWARGS:
+            embedding_model = _NIMEmbeddings(
+                api_key=self.api_key,
+                base_url=Config.OPENAI_API_BASE,
+                model=Config.EMBED_MODEL,
+                extra_body=Config.EMBED_MODEL_KWARGS,
+            )
+        else:
+            embed_kwargs = {"openai_api_key": self.api_key, "model": Config.EMBED_MODEL}
+            if Config.OPENAI_API_BASE:
+                embed_kwargs["openai_api_base"] = Config.OPENAI_API_BASE
+            embedding_model = OpenAIEmbeddings(**embed_kwargs)
 
         encoding = tiktoken.get_encoding("cl100k_base")
         input_token_price = 0.02 / 1000000
@@ -428,10 +463,19 @@ class RAGModel:
         Returns:
         - indices (list): List of indices of the similar chunks meeting the similarity threshold.
         """
-        # Embed the query
-        embedding_model = OpenAIEmbeddings(
-            openai_api_key=self.api_key, model=Config.EMBED_MODEL
-        )
+        # Embed the query — use QUERY_EMBED_MODEL_KWARGS (input_type="query" for NIM)
+        if Config.OPENAI_API_BASE and Config.QUERY_EMBED_MODEL_KWARGS:
+            embedding_model = _NIMEmbeddings(
+                api_key=self.api_key,
+                base_url=Config.OPENAI_API_BASE,
+                model=Config.EMBED_MODEL,
+                extra_body=Config.QUERY_EMBED_MODEL_KWARGS,
+            )
+        else:
+            embed_kwargs = {"openai_api_key": self.api_key, "model": Config.EMBED_MODEL}
+            if Config.OPENAI_API_BASE:
+                embed_kwargs["openai_api_base"] = Config.OPENAI_API_BASE
+            embedding_model = OpenAIEmbeddings(**embed_kwargs)
         # Calculate the token cost for the query using "cl100k_base" encoding
         encoding = tiktoken.get_encoding("cl100k_base")
         input_tokens = encoding.encode(query)

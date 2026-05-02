@@ -19,9 +19,8 @@ Usage:
 
 import logging
 from llama_index.core.llms import ChatMessage
-from llama_index.llms.openai import OpenAI
 from config import Config
-from utils.api import set_openai_api_key
+from utils.api import make_llm, set_openai_api_key
 
 # Set up logging configuration
 logging.basicConfig(level=logging.INFO)
@@ -42,9 +41,11 @@ def summarize_history(history):
     # Set the OpenAI API key
     set_openai_api_key()
 
-    # Initialize the OpenAI chat model for summarization
-    llm = OpenAI(
-        temperature=0, model=Config.CHAT_MODEL, max_tokens=Config.SUMMARY_MAX_TOKENS
+    # Initialize the chat model (NIM or OpenAI)
+    llm = make_llm(
+        temperature=0,
+        model=Config.CHAT_MODEL,
+        max_tokens=Config.SUMMARY_MAX_TOKENS,
     )
 
     # Prepare the summarization prompt
