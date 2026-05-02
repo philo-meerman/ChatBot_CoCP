@@ -38,10 +38,9 @@ Dependencies:
 import logging
 
 from llama_index.core.llms import ChatMessage
-from llama_index.llms.openai import OpenAI
 
 from config import Config
-from utils.api import set_openai_api_key
+from utils.api import make_llm, set_openai_api_key
 from utils.citation_handler import get_direct_citation, is_direct_citation_request
 from utils.summarizer import summarize_history
 
@@ -137,9 +136,11 @@ def generate_answer(query, rag_model, conversation_history=None):
             for msg in messages:
                 logger.info("%s: %s", msg.role, msg.content[:200])
 
-            # Initialize the OpenAI chat model
-            llm = OpenAI(
-                temperature=0, model=Config.CHAT_MODEL, max_tokens=Config.MAX_TOKENS
+            # Initialize the chat model (NIM or OpenAI)
+            llm = make_llm(
+                temperature=0,
+                model=Config.CHAT_MODEL,
+                max_tokens=Config.MAX_TOKENS,
             )
 
             # Get the response from the chat model
