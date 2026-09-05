@@ -148,7 +148,9 @@ def generate_answer(query, rag_model, conversation_history=None):
             answer = responses.message.content
 
             # Estimate and log the cost
-            if hasattr(responses.raw, "usage"):
+            # The SDK always defines .usage, setting it to None when the endpoint
+            # omits it, so hasattr() is always True and guards nothing.
+            if getattr(responses.raw, "usage", None) is not None:
                 token_usage = responses.raw.usage
                 prompt_tokens = token_usage.prompt_tokens
                 completion_tokens = token_usage.completion_tokens
