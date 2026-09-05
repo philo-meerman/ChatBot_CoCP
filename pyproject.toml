@@ -1,0 +1,14 @@
+# Minimal PEP 621 metadata. This project is not packaged for distribution; the file exists
+# so tooling knows which Python it targets.
+#
+# Dependabot reads `requires-python` from a PEP 621 pyproject.toml and uses it to avoid
+# proposing releases the project cannot install. Without it, dependabot walked
+# requirements.txt onto Python 3.10+ pins (langchain-openai 1.1.14 in #26, python-dotenv
+# 1.2.2 in #27) while the project's virtualenv was still on 3.9, leaving master
+# uninstallable. Note that dependabot's handling of this field has known bugs, so the
+# shipyard review gate also fails any PR whose manifest stops resolving.
+[project]
+name = "chatbot-cocp"
+version = "1.0.0"
+description = "RAG chatbot over the Dutch Code of Criminal Procedure"
+requires-python = ">=3.11"
