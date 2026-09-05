@@ -1,6 +1,11 @@
 # shipyard configuration for ChatBot_CoCP
 # https://github.com/philo-meerman/shipyard
 
+# Rung 0 fails any PR whose manifest pins a release this interpreter cannot install.
+# master accumulated two such pins before this existed (langchain-openai 1.1.14 and
+# python-dotenv 1.2.2, both requiring >=3.10) and became uninstallable.
+requires_python: ">=3.11"
+
 auto_merge: true
 merge_method: squash
 delete_branch: true
