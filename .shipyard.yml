@@ -1,0 +1,39 @@
+# shipyard configuration for ChatBot_CoCP
+# https://github.com/philo-meerman/shipyard
+
+auto_merge: true
+merge_method: squash
+delete_branch: true
+trusted_bots: ["dependabot[bot]"]
+
+# A bare git worktree has none of these: venv/, .env and embeddings.index are all
+# gitignored, so the worktree supplies the code and this checkout supplies the runtime.
+runtime:
+  python: ./venv/bin/python
+  env_file: .env
+  link: [embeddings.index]
+
+# Scoped deliberately. tests/test_app.py calls initialize_rag_model() and posts to /chat,
+# which makes a live billed OpenAI request -- unacceptable on every pull request. Until
+# that test is given a stub, the automated suite is the mocked half only.
+test_command: pytest -q tests/test_pdf_processor.py
+
+import_check: [utils.pdf_processor, web.app]
+
+# Booted through the Flask CLI rather than `python web/app.py`, because the module's
+# __main__ block calls initialize_rag_model(). The CLI skips __main__, so the app serves
+# its frontend without touching the model. Measured: 200 in ~2s, no API call.
+smoke:
+  boot: ./venv/bin/python -m flask --app web.app run --port 5199
+  health_url: http://127.0.0.1:5199/
+  expect_status: 200
+  timeout_s: 60
+
+# The repository's only pypdf call site, on its only tracked PDF. Deterministic, offline.
+boundary_probe: |
+  from utils.pdf_processor import extract_text_from_pdf
+  print(extract_text_from_pdf("data/vm1kkye15yy2.pdf"))
+
+dependency_policy:
+  auto_merge_update_types: [patch, minor]   # major and unknown always need a human
+  behaviour_diff: warn

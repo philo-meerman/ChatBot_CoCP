@@ -1,0 +1,15 @@
+name: ChatBot_DPC
+version: 1.0.0
+description: APM project for ChatBot_DPC
+author: philo-meerman
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-build, kiro, opencode, vscode, windsurf
+targets:
+  - claude
+dependencies:
+  apm:
+    - philo-meerman/shipyard/packages/bundles/pr-flow#v0.1.2
+  mcp: []
+includes: auto
+scripts: {}

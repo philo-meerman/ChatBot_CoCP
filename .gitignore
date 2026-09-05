@@ -134,3 +134,9 @@ flask_session/
 web/.DS_Store
 output.png
 evaluation/comparison_results_*
+
+# APM dependencies
+apm_modules/
+
+# Claude Code scratch worktrees
+.claude/worktrees/
