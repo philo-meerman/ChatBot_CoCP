@@ -91,7 +91,8 @@ class PDFProcessorTests(unittest.TestCase):
         pdf_path = "dummy/path/to/pdf"
         text = extract_text_from_pdf(pdf_path)
 
-        expected_text = "Page 1 text. Page 1 text. "
+        # extract_text_from_pdf separates pages with "\n ", per its docstring.
+        expected_text = "Page 1 text. \n Page 1 text. \n "
         self.assertEqual(text, expected_text)
         mock_pdf_reader.assert_called_once_with(pdf_path)
 
